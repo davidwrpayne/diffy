@@ -28,7 +28,7 @@ trait FieldMetadata {
 trait DifferenceCounter {
   def count(endpoint: String, diffs: Map[String, Difference]): Future[Unit]
   def endpoints: Future[Map[String, EndpointMetadata]]
-  def endpoint(endpoint: String) = endpoints flatMap { ep => Future { ep(endpoint) } }
+  def endpoint(endpoint: String): Future[EndpointMetadata] = endpoints flatMap { ep => Future { ep(endpoint) } }
   def fields(endpoint: String): Future[Map[String, FieldMetadata]]
   def clear(): Future[Unit]
 }

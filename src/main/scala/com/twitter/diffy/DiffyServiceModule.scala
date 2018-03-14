@@ -7,8 +7,12 @@ import com.twitter.inject.TwitterModule
 import com.twitter.util.TimeConversions._
 import java.net.InetSocketAddress
 
+import akka.actor.ActorSystem
 import javax.inject.Singleton
 import com.twitter.util.Duration
+import redis.{RedisClient, RedisDispatcher}
+
+import scala.concurrent.ExecutionContextExecutor
 
 object DiffyServiceModule extends TwitterModule {
   val datacenter =
@@ -101,15 +105,20 @@ object DiffyServiceModule extends TwitterModule {
       httpsPort()
     )
 
+  implicit val system = ActorSystem("RedisCollectorActorSystem")
+  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  val redisClient = new RedisClient("redis.service.bcdev", 6379, None, None, "DiffyRedisClient", None)
+    (system,RedisDispatcher("redisDispatcher"))
   @Provides
   @Singleton
-  def providesRawCounter = RawDifferenceCounter(new InMemoryDifferenceCounter)
+  def providesRawCounter = RawDifferenceCounter(new RedisDifferenceCounter(redisClient,"RawDifferenceCounter"))
 
   @Provides
   @Singleton
-  def providesNoiseCounter = NoiseDifferenceCounter(new InMemoryDifferenceCounter)
+  def providesNoiseCounter = NoiseDifferenceCounter(new RedisDifferenceCounter(redisClient,"NoiseDifferenceCounter") )
 
   @Provides
   @Singleton
-  def providesCollector: DifferenceCollector = new RedisStoreDifferenceCollector()
+  def providesCollector: DifferenceCollector = new RedisStoreDifferenceCollector(redisClient)
+
 }
